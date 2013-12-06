@@ -1,0 +1,9 @@
+name = Triple
+description = Name-value1-value2 triple field
+core = 7.x
+package = Fields
+
+files[] = triple.module
+
+
+

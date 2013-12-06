@@ -1,0 +1,1110 @@
+<?php
+
+/**
+ * @file
+ * Defines text-to-text triple field types.
+ */
+
+define('TRIPLE_TARGET_DEFAULT', 'default');
+define('TRIPLE_TARGET_NEW_WINDOW', '_blank');
+define('TRIPLE_TARGET_TOP', '_top');
+define('TRIPLE_TARGET_USER', 'user');
+
+/**
+ * Max value length - needs to match value in triple.install.
+ */
+define('TRIPLE_VALUE_MAX_LENGTH', 2048);
+define('TRIPLE_NAME_MAX_LENGTH', 255);
+
+/**
+ * Implements hook_field_info().
+ */
+function triple_field_info() {
+  return array(
+    'triple_field' => array(
+      'label' => t('Triple'),
+      'description' => t('Store a name-value-value triple in the database.'),
+      'settings' => array(
+        'name' => 'optional',
+        'value' => 'optional',
+        'value2' => 'optional',
+        'name_label' => 'Name',
+        'value_label' => 'Value',
+        'value2_label' => 'Value 2',
+        'name_value' => '',
+        'value_value' => '',
+        'value2_value' => '',
+        'name_maxlength' => 128,
+        'value_maxlength' => 128,
+        'value2_maxlength' => 128,
+        'enable_tokens' => 1,
+        'display' => array(
+          'value_cutoff' => 80,
+        ),
+      ),
+      'instance_settings' => array(
+        'name' => 'optional',
+        'value' => 'optional',
+        'value2' => 'optional',
+        'name_label' => 'Name',
+        'value_label' => 'Value',
+        'value2_label' => 'Value 2',
+        'name_value' => '',
+        'value_value' => '',
+        'value2_value' => '',
+        'name_maxlength' => 128,
+        'value_maxlength' => 128,
+        'value2_maxlength' => 128,
+        'enable_tokens' => 1,
+        'display' => array(
+          'value_cutoff' => 80,
+        ),
+        'validate_value' => 1,
+      ),
+      'default_widget' => 'triple_field',
+      'default_formatter' => 'triple_default',
+      // Support hook_entity_property_info() from "Entity API".
+      'property_type' => 'field_item_triple',
+      'property_callbacks' => array('triple_field_property_info_callback'),
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_instance_settings_form().
+ */
+function triple_field_instance_settings_form($field, $instance) {
+  $settings = $instance['settings'];
+  $form = array(
+    '#element_validate' => array('triple_field_settings_form_validate'),
+  );
+
+  $name_options = array(
+    'optional' => t('Optional (default)'),
+    'required' => t('Required'),
+    'value' => t('Static'),
+    'none' => t('None'),
+  );
+  $value_options = $name_options;
+ // unset($value_options['none']);
+
+  // Hidden form elements to "move up" the "Default Value" fieldset
+  for ($i = 0; $i < 9; $i++) {
+    $form["hidden$i"] = array('#markup' => '');
+  }
+
+  $element_title_ra = array('name' => 'Name', 'value' => 'Value 1', 'value2' => 'Value 2');
+
+  // Label textfields
+  foreach ($element_title_ra as $element => $title) {
+    $pfx = '<div class="triple-' . $element . '-label-settings">';
+    $label = $element . '_label';
+    $form[$label] = array(
+      '#type' => 'textfield',
+      '#title' => t("$title Label"),
+      '#default_value' => isset($settings[$label]) && !empty(trim($settings[$label])) ?
+        $settings[$label] : $title,
+      '#description' => t("The label for $title that will be displayed to the user."),
+      '#prefix' => $pfx,
+      '#suffix' => '</div>',
+    );
+  }
+
+  // Options radios
+  foreach ($element_title_ra as $element => $title) {
+    $options = (!strcasecmp($element, 'name')) ? $name_options : $value_options;
+    $pfx = '<div class="triple-' . $element . '-options-settings">';
+    $form[$element] = array(
+      '#type' => 'radios',
+      '#title' => t("Triple $title Options"),
+      '#default_value' => isset($settings[$element]) ? $settings[$element] : 'optional',
+      '#options' => $options,
+     // '#description' => t('If the triple name, value 1, or value 2 is optional or required, a field will be displayed to the end user. If the triple name is static, the triple will always use the same name. If <a href="http://drupal.org/project/token">token module</a> is installed, the static name value may use any other entity field as its value. Static and token-based names/values may include most inline XHTML tags such as <em>strong</em>, <em>em</em>, <em>img</em>, <em>span</em>, etc.'),
+      '#prefix' => $pfx,
+      '#suffix' => '</div>',
+    );
+  }
+
+  // Options description
+  $form['options_desc'] = array(
+    '#markup' => "<p>If the triple name, value 1, or value 2 is optional or required, a field will be displayed to the end user. If the triple name is static, the triple will always use the same name. If <a href=\"http://drupal.org/project/token\">token module</a> is installed, the static name value may use any other entity field as its value. Static and token-based names/values may include most inline XHTML tags such as <em>strong</em>, <em>em</em>, <em>img</em>, <em>span</em>, etc.</p>",
+    '#prefix' => '<div class="triple-options-settings-desc">',
+    '#suffix' => '</div>',
+  );
+
+  // Static value textfield
+  foreach ($element_title_ra as $element => $title) {
+    $pfx = '<div class="triple-' . $element . '-static-settings">';
+    $title = strtolower(substr($title, 0, 1)) . substr($title, 1);
+    $fe = $element . '_value';
+    $form[$fe] = array(
+      '#type' => 'textfield',
+      '#title' => t("Static $title"),
+      '#default_value' => isset($settings[$fe]) ? $settings[$fe] : '',
+      //'#description' => t('This name will always be used if &ldquo;Static&rdquo; for Name is selected above. The same applies for Value 1 and Value 2'),
+      '#prefix' => $pfx,
+      '#suffix' => '</div>',
+    );
+  }
+
+  // Static value description
+  $form['static_desc'] = array(
+    '#markup' => 'This name will always be used if &ldquo;Static&rdquo; for Name is selected above. The same applies for Value 1 and Value 2.',
+    '#prefix' => '<div class="triple-static-desc">',
+    '#suffix' => '</div>',
+  );
+
+  // Maxlength settings
+  foreach ($element_title_ra as $element => $title) {
+    $pfx = '<div class="triple-' . $element . '-maxlength-settings">';
+    $title = strtolower(substr($title, 0, 1)) . substr($title, 1);
+    $fe = $element . '_maxlength';
+    $maxlen = (!strcasecmp($element, 'name')) ? 3 : 4;
+    $form[$fe] = array(
+      '#type' => 'textfield',
+      '#title' => t("Max length of $title field"),
+      '#default_value' => isset($settings[$fe]) ? $settings[$fe] : '128',
+      '#maxlength' => $maxlen,
+      '#size' => $maxlen,
+      '#prefix' => $pfx,
+      '#suffix' => '</div>',
+    );
+  }
+
+  // Maxlength description
+  $form['maxlength_desc'] = array(
+    '#markup' => 'Set a maximum length on the name, value, and value 2 fields (applies only if Triple Name / Value 1 / Value 2 ' .
+      'is optional or required).  The maximum limit for name is ' . TRIPLE_NAME_MAX_LENGTH .
+      ' characters, ' . TRIPLE_VALUE_MAX_LENGTH . ' for value 1, and ' . TRIPLE_VALUE_MAX_LENGTH .
+      ' for value 2.',
+    '#prefix' => '<div class="triple-maxlength-desc">',
+    '#suffix' => '</div>',
+  );
+
+  if (module_exists('token')) {
+    // Add token module replacements fields
+    $form['enable_tokens'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Allow user-entered tokens'),
+      '#default_value' => isset($settings['enable_tokens']) ? $settings['enable_tokens'] : 1,
+      '#description' => t('Checking will allow users to enter tokens in Values and Names on the entity edit form. This does not affect the field settings on this page.'),
+    );
+    $entity_info = entity_get_info($instance['entity_type']);
+    $form['tokens_help'] = array(
+      '#theme' => 'token_tree',
+      '#token_types' => array($entity_info['token type']),
+      '#global_types' => TRUE,
+      '#click_insert' => TRUE,
+      '#dialog' => TRUE,
+    );
+  }
+
+  $form['display'] = array(
+    '#tree' => TRUE,
+  );
+ /* $form['display']['value_cutoff'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Value Display Cutoff'),
+    '#default_value' => isset($settings['display']['value_cutoff']) ? $settings['display']['value_cutoff'] : '80',
+    '#description' => t('If the user does not include a name for this triple, the Value will be used as the name. When should the triple name be trimmed and finished with an elipsis (&hellip;)? Leave blank for no limit.'),
+    '#maxlength' => 3,
+    '#size' => 3,
+  );*/
+  return $form;
+}
+
+/**
+ * #element_validate handler for triple_field_instance_settings_form().
+ */
+function triple_field_settings_form_validate($element, &$form_state, $complete_form) {
+  $settings = $form_state['values']['instance']['settings'];
+
+  $option_ra = array('value' => 'static', 'none' => 'none');
+  foreach ($option_ra as $option => $meaning) {
+    if (!strcasecmp($settings['name'], $option) &&
+      !strcasecmp($settings['value'], $option) &&
+      !strcasecmp($settings['value2'], $option)) {
+      form_set_error('value2_value', t("At least one of name, value 1, or value 2 must not be $meaning."));
+    }
+  }
+
+  if (!strcasecmp($settings['value'], 'none') && !strcasecmp($settings['value2'], 'none')) {
+    form_set_error('value2_value', t("At least one of value 2 or value 2 must not be none."));
+  }
+
+  $element_ra = array('name', 'value', 'value2');
+  foreach ($element_ra as $element) {
+    $readable = ""; $lower_readable = "";
+    switch ($element) {
+      case 'name': $readable = 'Name'; $lower_readable = $element; break;
+      case 'value': $readable = 'Value 1'; $lower_readable = 'value 1'; break;
+      case 'value2':
+      default: $readable = 'Value 2'; $lower_readable = 'value 2'; break;
+    }
+    $label = $element . '_label';   $val = $element . '_value';
+    if (empty($settings[$label])) {
+      form_set_error($label, t("A label for the $readable must be provided."));
+    }
+    if (!strcasecmp($settings[$element], 'value') &&
+      empty($settings[$val])) {
+      form_set_error($val, t("A default name must be provided if the $lower_readable is a static."));
+    }
+  }
+
+
+  if (!empty($settings['display']['value_cutoff']) && !is_numeric($settings['display']['value_cutoff'])) {
+    form_set_error('display', t('Value Display Cutoff value must be numeric.'));
+  }
+
+  foreach ($element_ra as $element) {
+    $maxlen = $element . '_maxlength';
+    $len = (!strcasecmp($element, 'name')) ? TRIPLE_NAME_MAX_LENGTH : TRIPLE_VALUE_MAX_LENGTH;
+    if (empty($settings[$maxlen])) {
+      form_set_value($element[$maxlen], '128', $form_state);
+    }
+    elseif (!is_numeric($settings[$maxlen])) {
+      form_set_error($maxlen, t("The max length of the triple $element must be numeric."));
+    }
+    elseif ($settings[$maxlen] > $len) {
+      form_set_error($maxlen, t("The max length of the triple $element cannot be greater than $len characters."));
+    }
+  }
+
+
+  $trim_ra = array('label', 'value');
+  foreach ($element_ra as $element) {
+    foreach ($trim_ra as $type) {
+      trim($form_state['values']['instance']['settings'][$element . '_' . $type]);
+    }
+  }
+
+}
+
+/**
+ * Implements hook_field_is_empty().
+ */
+function triple_field_is_empty($item, $field) {
+  return empty($item['name']) && empty($item['value']) && empty($item['value2']);
+}
+
+
+/**
+ * Implements hook_field_validate().
+ */
+function triple_field_validate($entity_type, $entity, $field, $instance, $langcode, $items, &$errors) {
+  $name = isset($instance['settings']['name_label']) ? $instance['settings']['name_label'] : 'Name';
+  $value = isset($instance['settings']['value_label']) ? $instance['settings']['value_label'] : 'Value 1';
+  $value2 = isset($instance['settings']['value2_label']) ? $instance['settings']['value2_label'] : 'Value 2';
+
+  $optional_field_found = FALSE;
+  if (!isset($instance['settings']['validate_value']) || $instance['settings']['validate_value'] !== 0 ||
+    is_null($instance['settings']['validate_value'])) {
+    foreach ($items as $delta => $value) {
+      if (isset($items[$delta]))
+        _triple_validate($items[$delta], $delta, $field, $entity, $instance, $langcode, $optional_field_found, $errors);
+    }
+  }
+
+  if (!isset($instance['settings']['value'])) return;
+  if (!strcasecmp($instance['settings']['value'], 'optional') &&
+    !strcasecmp($instance['settings']['name'], 'optional') &&
+    !strcasecmp($instance['settings']['value2'], 'optional') &&
+    $instance['required'] && !$optional_field_found) {
+    $errors[$field['field_name']][$langcode][0][] = array(
+      'error' => 'triple_required',
+      'message' => t("At least one $value or $value2 must be entered."),
+      'error_element' => array('value' => FALSE, 'value2' => FALSE, 'name' => TRUE),
+    );
+  }
+}
+
+/**
+ * Implements hook_field_insert().
+ */
+function triple_field_insert($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  $element_ra = array('name', 'value', 'value2');
+  $settings = $instance['settings'];
+  foreach ($items as $delta => $value) {
+    foreach ($element_ra as $element) {
+      if (!strcasecmp($settings[$element], "value")) { // static
+        $items[$delta][$element] = $settings[$element . '_value'];
+      }
+      elseif (!strcasecmp($settings[$element], 'none')) { // none
+        $items[$delta][$element] = NULL;
+      }
+      _triple_process($item[$delta], $delta, $field, $settings);
+    }
+  }
+}
+
+/**
+ * Implements hook_field_update().
+ */
+function triple_field_update($entity_type, $entity, $field, $instance, $langcode, &$items) {
+  $element_ra = array('name', 'value', 'value2');
+  $settings = $instance['settings'];
+  foreach ($items as $delta => $value) {
+    foreach ($element_ra as $element) {
+      if (!strcasecmp($settings[$element], "value")) { // static
+        $items[$delta][$element] = $settings[$element . '_value'];
+      }
+      elseif (!strcasecmp($settings[$element], 'none')) { // none
+        $items[$delta][$element] = NULL;
+      }
+      _triple_process($item[$delta], $delta, $field, $settings);
+    }
+  }
+}
+
+
+/**
+ * Implements hook_field_widget_info().
+ */
+function triple_field_widget_info() {
+  return array(
+    'triple_field' => array(
+      'label' => 'Triple',
+      'field types' => array('triple_field'),
+      'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_widget_form().
+ */
+function triple_field_widget_form(&$form, &$form_state, $field, $instance, $langcode, $items, $delta, $element) {
+  $element += array(
+    '#type' => $instance['widget']['type'],
+    '#default_value' => isset($items[$delta]) ? $items[$delta] : '',
+  );
+  return $element;
+}
+
+/**
+ * Implements hook_field_widget_error().
+ */
+function triple_field_widget_error($element, $error, $form, &$form_state) {
+  if ($error['error_element']['name']) {
+    form_error($element['name'], $error['message']);
+  }
+  elseif ($error['error_element']['value']) {
+    form_error($element['value'], $error['message']);
+  }
+  elseif ($error['error_element']['value2']) {
+    form_error($element['value2'], $error['message']);
+  }
+}
+
+
+/**
+ * Prepares the item attributes and value for storage.
+ */
+function _triple_process(&$item, $delta = 0, $field, $settings) {
+
+  if (isset($item['name'])) $item['name'] = trim($item['name']);
+  if (isset($item['value'])) $item['value'] = trim($item['value']);
+  if (isset($item['value2'])) $item['value2'] = trim($item['value2']);
+}
+
+/**
+ * Validates that the triple field has been entered properly.
+ */
+function _triple_validate(&$item, $delta, $field, $entity, $instance, $langcode, &$optional_field_found, &$errors) {
+  $name = isset($instance['settings']['name_label']) ? $instance['settings']['name_label'] : 'Name';
+  $value = isset($instance['settings']['value_label']) ? $instance['settings']['value_label'] : 'Value 1';
+  $value2 = isset($instance['settings']['value2_label']) ? $instance['settings']['value2_label'] : 'Value 2';
+
+  if (isset($item['value']) && isset($instance['default_value'][$delta]['value']) &&
+    isset($instance['default_value'][$delta]['value2']) &&
+    (!(isset($instance['default_value'][$delta])) ||
+    !(isset($instance['default_value'][$delta]['value']))) &&
+    $item['value'] === $instance['default_value'][$delta]['value'] &&
+    isset($item['value2']) && !(isset($instance['default_value'][$delta]['value2'])) &&
+    $item['value2'] === $instance['default_value'][$delta]['value2'] &&
+    !$instance['required']) {
+
+    // Require a name for the triple if necessary.
+    if ($instance['settings']['name'] == 'required' &&
+      strlen(trim($item['name'])) == 0) {
+      $errors[$field['field_name']][$langcode][$delta][] = array(
+        'error' => 'triple_required',
+        'message' => t($name . 's are required for all triples.'),
+        'error_element' => array('value' => FALSE, 'value2' => FALSE, 'name' => TRUE),
+      );
+    }
+
+    // Require value 1 for the triple if necessary.
+    if (!strcasecmp($instance['settings']['value'], 'required') &&
+      strlen(trim($item['value'])) == 0) {
+      $errors[$field['field_value']][$langcode][$delta][] = array(
+        'error' => 'triple_required',
+        'message' => t($value . 's are required for all triples.'),
+        'error_element' => array('value' => TRUE, 'value2' => FALSE, 'name' => FALSE),
+      );
+    }
+
+
+    // Require value 2 for the triple if necessary.
+    if (!strcasecmp($instance['settings']['value2'], 'required') &&
+      strlen(trim($item['value2'])) == 0) {
+      $errors[$field['field_value2']][$langcode][$delta][] = array(
+        'error' => 'triple_required',
+        'message' => t($value2 . 's are required for all triples.'),
+        'error_element' => array('value' => FALSE, 'value2' => TRUE , 'name' => FALSE),
+      );
+    }
+  }
+
+
+  // Require a triple if we have a name.
+  if (isset($item['value']) && isset($instance['settings']['value']) &&
+    $instance['settings']['value'] !== 'optional' &&
+    isset($item['value2']) && isset($instance['settings']['value']) &&
+    $instance['settings']['value2'] !== 'optional' &&
+    strlen(isset($item['name']) ? $item['name'] : NULL) > 0 &&
+    strlen(trim($item['value'])) == 0 && strlen(trim($item['value2'])) == 0) {
+    $errors[$field['field_name']][$langcode][$delta][] = array(
+      'error' => 'triple_required',
+      'message' => t("You cannot enter a $name without $value or $value2."),
+      'error_element' => array('value' => TRUE, 'value2' => TRUE, 'name' => FALSE),
+    );
+  }
+   // If values and names are optional but the field is required,
+  // ensure there is at least one triple.
+  if ((isset($instance['settings']['value']) && isset($item['value']) ||
+    isset($instance['settings']['value2']) && isset($item['value2']))&&
+    ($instance['settings']['value'] === 'optional' || $instance['settings']['value'] === 'none') &&
+    ($instance['settings']['name'] === 'optional' || $instance['settings']['name'] === 'none') &&
+    ($instance['settings']['value2'] === 'optional' || $instance['settings']['value2'] === 'none') &&
+    ((isset($item['value']) && strlen(trim($item['value'])) !== 0) ||
+    (isset($item['value2']) && strlen(trim($item['value2'])) !== 0) ||
+    (isset($item['name']) && strlen(trim($item['name'])) !== 0))) {
+    $optional_field_found = TRUE;
+  }
+  // Require entire field
+  if (!isset($instance['settings']['value'])) return;
+  if (($instance['settings']['value'] === 'optional' || $instance['settings']['value'] === 'none') &&
+    ($instance['settings']['name'] === 'optional' || $instance['settings']['name'] === 'none') &&
+    ($instance['settings']['value2'] === 'optional' || $instance['settings']['value2'] === 'none') &&
+    $instance['required'] == 1 && !$optional_field_found && isset($instance['id'])) {
+    $errors[$field['field_name']][$langcode][$delta][] = array(
+      'error' => 'triple_required',
+      'message' => t("At least one of $value or $value2 must be entered."),
+      'error_element' => array('value' => TRUE, 'value2' => TRUE, 'name' => FALSE),
+    );
+  }
+}
+
+/**
+ * Clean up user-entered values for a triple field according to field settings.
+ *
+ * @param $item
+ *   A single triple item, usually containing value, name, and attributes.
+ * @param $delta
+ *   The delta value if this field is one of multiple fields.
+ * @param $field
+ *   The CCK field definition.
+ */
+function _triple_sanitize(&$item, $delta, &$field, $instance, &$entity) {
+  // Don't try to process empty triples.
+  if (empty($item['value']) && empty($item['value2']) && empty($item['name'])) {
+    return;
+  }
+
+  // Replace Value tokens.
+  $entity_type = $instance['entity_type'];
+  $entity_info = entity_get_info($entity_type);
+  $property_id = $entity_info['entity keys']['id'];
+  $entity_token_type = isset($entity_info['token type']) ? $entity_info['token type'] : (
+    $entity_type == 'taxonomy_term' || $entity_type == 'taxonomy_vocabulary' ? str_replace('taxonomy_', '', $entity_type) : $entity_type
+  );
+  if (isset($instance['settings']['enable_tokens']) && $instance['settings']['enable_tokens']) {
+    global $user;
+    // Load the entity if necessary for entities in views.
+    if (isset($entity->{$property_id})) {
+      $entity_loaded = entity_load($entity_type, array($entity->{$property_id}));
+      $entity_loaded = array_pop($entity_loaded);
+    }
+    else {
+      $entity_loaded = $entity;
+    }
+    $item['value'] = token_replace($item['value'], array($entity_token_type => $entity_loaded));
+    $item['value2'] = token_replace($item['value2'], array($entity_token_type => $entity_loaded));
+  }
+
+  $value = triple_cleanup_value($item['value']);
+  $value2 = triple_cleanup_value($item['value2']);
+  $value_parts = _triple_parse_value($value);
+  $value_parts2 = _triple_parse_value($value2);
+
+  if (!empty($value_parts['value'])) {
+    $item['value'] = value($value_parts['value'],
+      array(
+        'absolute' => TRUE,
+      )
+    );
+  }
+
+  if (!empty($value_parts2['value2'])) {
+    $item['value2'] = value($value_parts['value2'],
+      array(
+        'absolute' => TRUE,
+      )
+    );
+  }
+
+  $display_value = value($value_parts['value'],
+    array(
+      'absolute' => TRUE,
+    )
+  );
+
+  $display_value2 = value($value_parts2['value2'],
+    array(
+      'absolute' => TRUE,
+    )
+  );
+
+ /* if ($instance['settings']['display']['value_cutoff'] && strlen($display_value) > $instance['settings']['display']['value_cutoff']) {
+    $display_value = substr($display_value, 0, $instance['settings']['display']['value_cutoff']) . "...";
+    $display_value2 = substr($display_value2, 0, $instance['settings']['display']['value_cutoff']) . "...";
+  }*/
+
+  $item['display_value'] = $display_value;
+  $item['display_value2'] = $display_value2;
+
+  $element_ra = array('name', 'value', 'value2');
+
+  foreach ($element_ra as $element) {
+    // Use the name defined at the instance level.
+    $evalue = $element . '_value';
+    if (!strcasecmp($instance['settings'][$element], 'value') && strlen(trim($instance['settings'][$evalue]))) {
+      $name = $instance['settings'][$evalue];
+      if (function_exists('i18n_string_translate')) {
+        $i18n_string_name = "field:{$instance['field_name']}:{$instance['bundle']}:$evalue";
+        $name = i18n_string_translate($i18n_string_name, $name);
+      }
+    }
+    // Use the name defined by the user at the widget level.
+    elseif (isset($item[$element])) {
+      $name = $item[$element];
+    }
+    else {
+      $name = '';
+    }
+
+    // Replace tokens.
+    if ($name && ($instance['settings'][$element] == 'value' || $instance['settings']['enable_tokens'])) {
+      // Load the entity if necessary for entities in views.
+      if (isset($entity->{$property_id})) {
+        $entity_loaded = entity_load($entity_type, array($entity->{$property_id}));
+        $entity_loaded = array_pop($entity_loaded);
+      }
+      else {
+        $entity_loaded = $entity;
+      }
+      $name = token_replace($name, array($entity_token_type => $entity_loaded));
+    }
+    $item[$element] = empty($name) ? $item['display_value'] : $name;
+  }
+}
+
+/**
+ * Because parse_value doesn't work with relative values.
+ *
+ * @param string $value
+ *   Value to parse.
+ *
+ * @return Array
+ *   Array of value pieces - only 'value' and 'fragment'.
+ */
+function _triple_parse_value($value) {
+  $value_parts = array();
+  // Separate out the anchor, if any.
+  if (strpos($value, '#') !== FALSE) {
+    $value_parts['fragment'] = substr($value, strpos($value, '#') + 1);
+    $value = substr($value, 0, strpos($value, '#'));
+  }
+  // Separate out the query string, if any.
+  if (strpos($value, '?') !== FALSE) {
+    $query = substr($value, strpos($value, '?') + 1);
+    $value = substr($value, 0, strpos($value, '?'));
+  }
+  $value_parts['value'] = $value;
+  return $value_parts;
+}
+
+
+/**
+ * Implements hook_theme().
+ */
+function triple_theme() {
+  return array(
+    'triple_formatter_triple_default' => array(
+      'variables' => array('element' => NULL, 'field' => NULL),
+    ),
+    'triple_formatter_triple_plain' => array(
+      'variables' => array('element' => NULL, 'field' => NULL),
+    ),
+    'triple_formatter_triple_name_plain' => array(
+      'variables' => array('element' => NULL, 'field' => NULL),
+    ),
+    'triple_formatter_triple_value' => array(
+      'variables' => array('element' => NULL, 'field' => NULL),
+    ),
+    'triple_formatter_triple_short' => array(
+      'variables' => array('element' => NULL, 'field' => NULL),
+    ),
+    'triple_formatter_triple_label' => array(
+      'variables' => array('element' => NULL, 'field' => NULL),
+    ),
+    'triple_formatter_triple_separate' => array(
+      'variables' => array('element' => NULL, 'field' => NULL),
+    ),
+    'triple_field' => array(
+      'render element' => 'element',
+    ),
+  );
+}
+
+/**
+ * Formats a triple field widget.
+ */
+function theme_triple_field($vars) {
+  drupal_add_css(drupal_get_path('module', 'triple') . '/triple.css');
+  $element = $vars['element'];
+  // Prefix single value triple fields with the name of the field.
+  if (empty($element['#field']['multiple'])) {
+    if (isset($element['value']) && !isset($element['name'])) {
+      $element['value']['#title_display'] = 'invisible';
+    }
+  }
+
+  $output = '';
+  $output .= '<div class="triple-field-subrow clearfix">';
+  if (isset($element['name'])) {
+    $output .= '<div class="triple-field-name triple-field-column">' . drupal_render($element['name']) . '</div>';
+  }
+  if (isset($element['value'])) {
+    $output .= '<div class="triple-field-value' . (isset($element['name']) ? ' triple-field-column' : '') . '">' . drupal_render($element['value']) . '</div>';
+  }
+  if (isset($element['value2'])) {
+    $output .= '<div class="triple-field-value2' . (isset($element['name']) ? ' triple-field-column' : '') . '">' . drupal_render($element['value2']) . '</div>';
+  }
+  $output .= '</div>';
+
+  return $output;
+}
+
+/**
+ * Implements hook_element_info().
+ */
+function triple_element_info() {
+  $elements = array();
+  $elements['triple_field'] = array(
+    '#input' => TRUE,
+    '#process' => array('triple_field_process'),
+    '#theme' => 'triple_field',
+    '#theme_wrappers' => array('form_element'),
+  );
+  return $elements;
+}
+
+
+/**
+ * Processes the triple type element before displaying the field.
+ *
+ * Build the form element. When creating a form using FAPI #process,
+ * note that $element['#value'] is already set.
+ *
+ * The $fields array is in $complete_form['#field_info'][$element['#field_name']].
+ */
+function triple_field_process($element, $form_state, $complete_form) {
+  $instance = field_widget_instance($element, $form_state);
+  $settings = $instance['settings'];
+  $name = isset($settings['name_label']) ? $settings['name_label'] : 'Name';
+  $value = isset($settings['value_label']) ? $settings['value_label'] : 'Value 1';
+  $value2 = isset($settings['value2_label']) ? $settings['value2_label'] : 'Value 2';
+
+  $element_ra = array('name' => $name, 'value' => $value, 'value2' => $value2);
+  $editable = 0;
+
+  foreach ($element_ra as $key => $val) {
+
+    if (in_array($settings[$key], array('value', 'none')) && isset($complete_form['#node_edit_form']) && $complete_form['#node_edit_form'] == TRUE) {
+      if (!strcasecmp($settings[$key], 'value')) {
+        $element[$key] = array(
+          '#markup' => "<b>$val</b> (static)<p>" . $settings[$key . '_value'] . '</p>',
+        );
+      }
+      elseif (!strcasecmp($settings[$key], 'none')) {
+        $element[$key] = array(
+          '#markup' => "<b>$val</b> - None",
+        );
+      }
+    }
+    elseif (!isset($complete_form['#node_edit_form']) || $complete_form['#node_edit_form'] == FALSE ||
+      ($settings[$key] !== 'none' && $settings[$key] !== 'value')) {
+      $editable++;
+      $element[$key] = array(
+        '#type' => 'textfield',
+        '#maxlength' => $settings[$key . '_maxlength'],
+        '#title' => t($val),
+        '#description' => t("$val is limited to @maxlength chars maximum.", array('@maxlength' => $settings[$key . '_maxlength'])),
+        '#required' => ($settings[$key] == 'required' && (($element['#delta'] == 0 && $element['#required']) || !empty($element['#value']['value']))) ? TRUE : FALSE,
+        '#default_value' => isset($element['#value'][$key]) ? $element['#value'][$key] : NULL,
+      );
+    }
+  }
+
+  if (!$editable) {
+    $element['#description'] = 'No values need to be filled in.';
+  }
+
+  // If the name field is avaliable or there are field accepts multiple values
+  // then allow the individual field items display the required asterisk if needed.
+  if (isset($element['name']) || isset($element['_weight'])) {
+    // To prevent an extra required indicator, disable the required flag on the
+    // base element since all the sub-fields are already required if desired.
+    $element['#required'] = FALSE;
+  }
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_info().
+ */
+function triple_field_formatter_info() {
+  return array(
+    'triple_default' => array(
+      'label' => t('Name to represent the triple (default)'),
+      'field types' => array('triple_field'),
+      'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+    ),
+    'triple_value1' => array(
+      'label' => t('First value to represent the triple'),
+      'field types' => array('triple_field'),
+      'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+    ),
+    'triple_value2' => array(
+      'label' => t('Second value to represent the triple'),
+      'field types' => array('triple_field'),
+      'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+    ),
+    'triple_values' => array(
+      'label' => t('Both the first and second values to represent the triple'),
+      'field types' => array('triple_field'),
+      'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+    ),
+    'triple_name_value_value2' => array(
+      'label' => t('Name, and both values to represent the triple'),
+      'field types' => array('triple_field'),
+      'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+    ),
+    'triple_label' => array(
+      'label' => t('Label, as triple with label as name'),
+      'field types' => array('triple_field'),
+      'multiple values' => FIELD_BEHAVIOR_DEFAULT,
+    ),
+  );
+}
+
+/**
+ * Implements hook_field_formatter_settings_form().
+ */
+function triple_field_formatter_settings_form($field, $instance, $view_mode, $form, &$form_state) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+  $element = array();
+
+  return $element;
+}
+
+/**
+ * Implements hook_field_formatter_settings_summary().
+ */
+function triple_field_formatter_settings_summary($field, $instance, $view_mode) {
+  $display = $instance['display'][$view_mode];
+  $settings = $display['settings'];
+
+  return '';
+}
+
+/**
+ * Implements hook_field_formatter_view().
+ */
+function triple_field_formatter_view($entity_type, $entity, $field, $instance, $langcode, $items, $display) {
+  $elements = array();
+  foreach ($items as $delta => $item) {
+    $elements[$delta] = array(
+      '#theme' => 'triple_formatter_' . $display['type'],
+      '#element' => $item,
+      '#field' => $instance,
+      '#display' => $display,
+    );
+  }
+  return $elements;
+}
+
+/**
+ * Formats a triple.
+ */
+function theme_triple_formatter_triple_default($vars) {
+  // Display the name if it's avaliable
+  if (!empty($vars['element']['name'])) {
+    return $vars['element']['name'];
+  }
+  elseif (!empty($vars['element']['value'])) { // otherwise display the first value
+    return $vars['element']['value'];
+  }
+  elseif (!empty($vars['element']['value'])) { // otherwise, display the second value
+    return $vars['element']['value2'];
+  }
+}
+
+/**
+ * Formats a triple using the first value as the triple text
+ */
+function theme_triple_formatter_triple_value1($vars) {
+  return isset($vars['element']['value']) ? $vars['element']['value'] : '';
+}
+
+/**
+ * Formats a triple using the second value as the triple text
+ */
+function theme_triple_formatter_triple_value2($vars) {
+  return isset($vars['element']['value2']) ? $vars['element']['value2'] : '';
+}
+
+/**
+ * Formats a triple using both values as the triple text (when available).
+ */
+function theme_triple_formatter_triple_values($vars) {
+  if (isset($vars['element']['value']) && isset($vars['element']['value2'])) {
+    return $vars['element']['value'] . " " . $vars['element']['value2'];
+  }
+  elseif (isset($vars['element']['value'])) {
+    return $vars['element']['value'];
+  }
+  elseif (isset($vars['element']['value2'])) {
+    return $vars['element']['value2'];
+  }
+}
+
+
+/**
+ * Formats a triple using the name and both values as the triple text
+ * (when avaliable).
+ */
+function theme_triple_formatter_triple_name_value_value2($vars) {
+  if (isset($vars['element']['name'])) { // name exists
+    $str = $vars['element']['name'];
+    // both values exist
+    if (isset($vars['element']['value']) && isset($vars['element']['value2'])) {
+      $str .= " " . $vars['element']['value'] . " " . $vars['element']['value2'];
+    }
+    elseif (isset($vars['element']['value'])) { // just first value
+      $str .= " " . $vars['element']['value'];
+    }
+    elseif (isset($vars['element']['value2'])) { // just second value
+      $str .= " " . $vars['element']['value2'];
+    }
+    return $str;
+  }
+  elseif (isset($vars['element']['value'])) { // no name, but first value
+    $str = $vars['element']['value']; // and second value, or not
+    return (isset($vars['element']['value2'])) ? ($str . " " . $vars['element']['value2']) : $str;
+  }
+  elseif (isset($vars['element']['value2'])) { // just second value
+    return $vars['element']['value2'];
+  }
+}
+
+
+/**
+ * Formats a triple using the field's label as triple text.
+ */
+function theme_triple_formatter_triple_label($vars) {
+  return (isset($vars['element']['name']) || isset($vars['element']['value'])) ?
+    $vars['field']['label'] : '';
+}
+
+
+/**
+ * Implements hook_token_list().
+ */
+function triple_token_list($type = 'all') {
+  if ($type === 'field' || $type === 'all') {
+    $tokens = array();
+    $tokens['triple']['value'] = t("Triple Value");
+    $tokens['triple']['value'] = t("Triple Value 2");
+    $tokens['triple']['name'] = t("Triple name");
+    $tokens['triple']['view'] = t("Formatted triple");
+    return $tokens;
+  }
+}
+
+function triple_token_values($type, $object = NULL) {
+  if ($type === 'field') {
+    $item = $object[0];
+
+    $tokens['value'] = $item['value'];
+    $tokens['value2'] = $item['value2'];
+    $tokens['name'] = $item['name'];
+    $tokens['view'] = isset($item['view']) ? $item['view'] : '';
+
+    return $tokens;
+  }
+}
+
+/**
+ * Implements hook_views_api().
+ */
+function triple_views_api() {
+  return array(
+    'api' => 2,
+    'path' => drupal_get_path('module', 'triple') . '/views',
+  );
+}
+
+/**
+ * Cleans up a value.
+ * @param string $value
+ * @param string $protocol
+ *   The protocol to be prepended to the value if one is not specified
+ */
+function triple_cleanup_value($value) {
+  $value = trim($value);
+  return $value;
+}
+
+
+/**
+ * Implements hook_migrate_field_alter().
+ */
+function triple_content_migrate_field_alter(&$field_value, $instance_value) {
+  if ($field_value['type'] == 'triple') {
+    // Adjust the field type.
+    $field_value['type'] = 'triple_field';
+    // Remove settings that are now on the instance.
+    foreach (array('display', 'value', 'value2', 'name', 'name_value', 'enable_tokens', 'validate_value') as $setting) {
+      unset($field_value['settings'][$setting]);
+    }
+  }
+}
+
+/**
+ * Implements hook_migrate_instance_alter().
+ *
+ * Widget type also changed to triple_field.
+ */
+function triple_content_migrate_instance_alter(&$instance_value, $field_value) {
+  if ($field_value['type'] == 'triple') {
+    // Grab settings that were previously on the field.
+    foreach (array('display', 'value', 'value2', 'name', 'name_value', 'enable_tokens', 'validate_value') as $setting) {
+      if (isset($field_value['settings'][$setting])) {
+        $instance_value['settings'][$setting] = $field_value['settings'][$setting];
+      }
+    }
+    // Adjust widget type.
+    if ($instance_value['widget']['type'] == 'triple') {
+      $instance_value['widget']['type'] = 'triple_field';
+    }
+    // Adjust formatter types.
+    foreach ($instance_value['display'] as $context => $settings) {
+      if (in_array($settings['type'],
+        array('default', 'name_plain', 'value', 'value2', 'plain', 'short', 'label', 'separate'))) {
+        $instance_value['display'][$context]['type'] = 'triple_' . $settings['type'];
+      }
+    }
+  }
+}
+
+/**
+ * Implements hook_field_settings_form().
+ */
+function triple_field_settings_form() {
+  return array();
+}
+
+/**
+ * Additional callback to adapt the property info of triple fields.
+ *
+ * @see entity_metadata_field_entity_property_info().
+ */
+function triple_field_property_info_callback(&$info, $entity_type, $field, $instance, $field_type) {
+  $property = &$info[$entity_type]['bundles'][$instance['bundle']]['properties'][$field['field_name']];
+  // Define a data structure so it's possible to deal with both the triple name
+  // and Value.
+  $property['getter callback'] = 'entity_metadata_field_verbatim_get';
+  $property['setter callback'] = 'entity_metadata_field_verbatim_set';
+
+  // Auto-create the field item as soon as a property is set.
+  $property['auto creation'] = 'triple_field_item_create';
+
+  $property['property info'] = triple_field_item_property_info();
+  $property['property info']['value']['required'] = !$instance['settings']['value'];
+  $property['property info']['value2']['required'] = !$instance['settings']['value2'];
+  $property['property info']['name']['required'] = ($instance['settings']['name'] == 'required');
+  if ($instance['settings']['name'] == 'none') {
+    unset($property['property info']['name']);
+  }
+  unset($property['query callback']);
+}
+
+/**
+ * Callback for creating a new, empty triple field item.
+ *
+ * @see triple_field_property_info_callback()
+ */
+function triple_field_item_create() {
+  return array('name' => NULL, 'value' => NULL, 'value2' => NULL);
+}
+
+/**
+ * Defines info for the properties of the triple-field item data structure.
+ */
+function triple_field_item_property_info() {
+  $properties['name'] = array(
+    'type' => 'text',
+    'label' => t('The name of the triple.'),
+    'setter callback' => 'entity_property_verbatim_set',
+  );
+  $properties['value'] = array(
+    'type' => 'text',
+    'label' => t('The first value of the triple.'),
+    'setter callback' => 'entity_property_verbatim_set',
+  );
+  $properties['value2'] = array(
+    'type' => 'text',
+    'label' => t('The second value of the triple.'),
+    'setter callback' => 'entity_property_verbatim_set',
+  );
+  return $properties;
+}
+
+/**
+ * Implements hook_field_update_instance().
+ */
+function triple_field_update_instance($instance, $prior_instance) {
+  if (function_exists('i18n_string_update') &&
+    $instance['widget']['type'] == 'triple_field' &&
+    $prior_instance['settings']['name_value'] != $instance['settings']['name_value']) {
+    $i18n_string_name = "field:{$instance['field_name']}:{$instance['bundle']}:name_value";
+    i18n_string_update($i18n_string_name, $instance['settings']['name_value']);
+  }
+}
+
+/**
+ * Implements hook_i18n_string_list_TEXTGROUP_alter().
+ */
+function triple_i18n_string_list_field_alter(&$strings, $type = NULL, $object = NULL) {
+  if ($type != 'field_instance' || !is_array($object) || !isset($object['widget']['type'])) {
+    return;
+  }
+  if ($object['widget']['type'] == 'triple_field' && isset($object['settings']['name_value'])) {
+    $strings['field'][$object['field_name']][$object['bundle']]['name_value']['string'] = $object['settings']['name_value'];
+  }
+}

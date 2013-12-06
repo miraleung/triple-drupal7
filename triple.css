@@ -1,0 +1,156 @@
+.triple-field-name,
+.triple-field-value, 
+.triple-field-value2 {
+  text-align: left;
+  display: inline;
+  float: left;
+  margin-right: 5px;
+}
+
+
+.triple-field-value.form-item.description {
+	width: 95% !important;
+}
+
+
+.triple-field-column {
+  float: left;
+  width: 32%;
+}
+
+.triple-field-column .form-text {
+  width: 95%;
+}
+
+.triple-field-subrow.clearfix.triple-field-value
+.triple-field-subrow.clearfix.triple-field-value2
+.form-text {
+	width: 48%;
+	display: inline;
+}
+
+/* Settings form */
+/* Name */
+.triple-name-label-settings,
+.triple-value-label-settings,
+.triple-value2-label-settings {
+	width: 32%;
+	display: inline;
+	float: left;
+	margin-top: 5px;
+}
+
+.triple-name-label-settings {
+	margin-left: 5px;
+}
+
+.triple-name-label-settings .form-text,
+.triple-value-label-settings .form-text,
+.triple-value2-label-settings .form-text {
+	float: left;
+	width: 95%;
+	clear: right;
+}
+
+.triple-name-label-settings .description,
+.triple-value-label-settings .description,
+.triple-value2-label-settings .description {
+	clear: left;
+	width: 95%;
+	float: left;
+}
+
+/* Value 2 */
+.triple-value2-label-settings {
+	clear: right;
+}
+
+
+
+/* Name, Value, Value 2 Options */
+.triple-name-options-settings,
+.triple-value-options-settings,
+.triple-value2-options-settings {
+	width: 32%;
+	float: left;
+	margin-top: 5px;
+}
+
+.triple-name-options-settings {
+	margin-bottom: -12px;
+	margin-left: 5px;
+	clear: left;
+}
+
+.triple-value2-options-settings {
+	clear: right;
+}
+
+.triple-options-settings-desc {
+	clear: left;
+	display: block;
+	
+	/* Using Drupal description text css */
+	margin: 5px 0px 15px 5px;
+	line-height: 1.231em;
+	font-size: 0.923em;
+	color: rgb(102, 102, 102);
+}
+
+
+
+/* Name, Value, Value 2 static value settings */
+.triple-name-static-settings,
+.triple-value-static-settings,
+.triple-value2-static-settings {
+	width: 32%;
+	float: left;
+	margin-bottom: -12px;
+}
+
+.triple-name-static-settings {
+	margin-left: 5px;
+}
+
+.triple-name-static-settings .form-text,
+.triple-value-static-settings .form-text,
+.triple-value2-static-settings .form-text {
+	width: 95%;
+}
+
+.triple-static-desc {
+	clear: both;
+
+	/* Using Drupal description text css */
+	margin: 5px 0px 15px 5px;
+	line-height: 1.231em;
+	font-size: 0.923em;
+	color: rgb(102, 102, 102);
+}
+
+/* Maxlength */
+.triple-name-maxlength-settings,
+.triple-value-maxlength-settings,
+.triple-value2-maxlength-settings {
+	width: 32%;
+	float: left;
+	margin-bottom: -12px;
+}
+
+.triple-name-maxlength-settings {
+	margin-left: 5px;
+}
+
+.triple-value2-maxlength-settings {
+	clear: right;
+}
+
+.triple-maxlength-desc {
+	clear: both;
+
+	/* Using Drupal description text css */
+	margin: 5px 0px 15px 5px;
+	line-height: 1.231em;
+	font-size: 0.923em;
+	color: rgb(102, 102, 102);
+}

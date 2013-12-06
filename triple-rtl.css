@@ -1,0 +1,13 @@
+.triple-field-column {
+  float: right;
+}
+
+
+.triple-field-column.triple-field-value 
+.triple-field-column.triple-field-value2
+.form-text {
+	float: left;
+  direction: ltr;
+  text-align: left;
+}
+
