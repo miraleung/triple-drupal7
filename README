@@ -2,10 +2,10 @@ Triple README
 
 Has optional, required, static, or none options for name, value 1, and value 2.
 
-- To disable just the first field, add the following into your module's javascript file:
+- To disable just the first field on AJAX reloading, add the following into your module's javascript file:
   Drupal.behaviors.ubccs_camerasAddClass = {
     attach: function (context, settings) {
-      $(".form-item-field-fieldnamehere-und-0-name").addClass("form-disabled");
+      $(".form-item-field-fieldMachineNameHere-und-0-name").addClass("form-disabled");
      }
   };
 To disable the second field, replace "name" with "value". For the third field, replace "name" with "value2".
