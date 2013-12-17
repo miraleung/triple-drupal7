@@ -94,6 +94,7 @@ function triple_field_instance_settings_form($field, $instance) {
   }
 
   $element_title_ra = array('name' => 'Name', 'value' => 'Value 1', 'value2' => 'Value 2');
+	$def_val = isset($settings[$label]) && !empty(trim($settings[$label])) ? $settings[$label] : $title;
 
   // Label textfields
   foreach ($element_title_ra as $element => $title) {
@@ -102,8 +103,7 @@ function triple_field_instance_settings_form($field, $instance) {
     $form[$label] = array(
       '#type' => 'textfield',
       '#title' => t("$title Label"),
-      '#default_value' => isset($settings[$label]) && !empty(trim($settings[$label])) ?
-        $settings[$label] : $title,
+      '#default_value' => $def_val,
       '#description' => t("The label for $title that will be displayed to the user."),
       '#prefix' => $pfx,
       '#suffix' => '</div>',
