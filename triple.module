@@ -94,7 +94,8 @@ function triple_field_instance_settings_form($field, $instance) {
   }
 
   $element_title_ra = array('name' => 'Name', 'value' => 'Value 1', 'value2' => 'Value 2');
-	$def_val = isset($settings[$label]) && !empty(trim($settings[$label])) ? $settings[$label] : $title;
+  $trimmed_label = trim($settings[$label]);
+	$def_val = (isset($settings[$label]) && !empty($trimed_label)) ? $settings[$label] : $title;
 
   // Label textfields
   foreach ($element_title_ra as $element => $title) {
